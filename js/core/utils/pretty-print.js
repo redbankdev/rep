@@ -60,6 +60,61 @@ export function prettyPrintXML(xml) {
 }
 
 /**
+ * Pretty print minified JavaScript with basic formatting
+ * @param {string} js - JavaScript string to format
+ * @returns {string} Formatted JavaScript
+ */
+export function prettyPrintJavaScript(js) {
+    if (!js || typeof js !== 'string') {
+        return js || '';
+    }
+
+    try {
+        let formatted = js;
+        const indent = '  '; // 2 spaces
+        let indentLevel = 0;
+
+        // Add newlines before opening braces and increase indent
+        formatted = formatted.replace(/([{])/g, '\n$1');
+        
+        // Add newlines after closing braces and decrease indent
+        formatted = formatted.replace(/([}])/g, '$1\n');
+        
+        // Add newlines after semicolons (but not in strings)
+        formatted = formatted.replace(/([;])\s*(?=[^\s])/g, '$1\n');
+        
+        // Add newlines after commas (but preserve in arrays/objects)
+        formatted = formatted.replace(/([,])\s*(?=[^\s])/g, '$1\n');
+
+        // Split into lines and apply indentation
+        const lines = formatted.split('\n').filter(line => line.trim());
+        let result = '';
+        
+        for (const line of lines) {
+            const trimmed = line.trim();
+            
+            // Decrease indent for closing braces
+            if (trimmed.startsWith('}')) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+            
+            if (trimmed) {
+                result += indent.repeat(indentLevel) + trimmed + '\n';
+            }
+            
+            // Increase indent for opening braces
+            if (trimmed.endsWith('{')) {
+                indentLevel++;
+            }
+        }
+
+        return result.trim();
+    } catch (e) {
+        return js;
+    }
+}
+
+/**
  * Pretty print URL-encoded form data
  * @param {string} text - URL-encoded string
  * @returns {string} Formatted parameters (one per line) or original text
@@ -139,12 +194,17 @@ export function prettyPrintBody(body, contentType) {
         }
     }
 
-    // Try XML
+    // Try XML/HTML
     if (contentType && (contentType.includes('xml') || contentType.includes('html'))) {
         // Check if it looks like XML/HTML
         if (body.trim().startsWith('<')) {
             return prettyPrintXML(body);
         }
+    }
+
+    // Try JavaScript
+    if (contentType && (contentType.includes('javascript') || contentType.includes('text/javascript') || contentType.includes('application/javascript'))) {
+        return prettyPrintJavaScript(body);
     }
 
     // Try URL-encoded
@@ -168,6 +228,11 @@ export function prettyPrintBody(body, contentType) {
     // Try to detect URL-encoded (contains & and =)
     if (body.includes('=') && body.includes('&') && !body.includes('\n')) {
         return prettyPrintURLEncoded(body);
+    }
+
+    // Try to detect minified JavaScript (long lines with special chars)
+    if (isMinified(body) && hasJavaScriptPatterns(body)) {
+        return prettyPrintJavaScript(body);
     }
 
     // Return as-is if no formatting applied
@@ -217,4 +282,32 @@ export function isMinified(text) {
     
     // If average line length > 200 and less than 10 lines for every 1000 chars
     return avgLineLength > 200 && (lines.length / text.length) < 0.01;
+}
+
+/**
+ * Check if text contains JavaScript patterns
+ * @param {string} text - Text to check
+ * @returns {boolean} True if text appears to be JavaScript
+ */
+export function hasJavaScriptPatterns(text) {
+    if (!text || typeof text !== 'string') {
+        return false;
+    }
+
+    // Check for common JavaScript patterns
+    const jsPatterns = [
+        /function\s+\w+\s*\(/, // function declarations
+        /\s*=>\s*/, // arrow functions
+        /\bvar\b|\blet\b|\bconst\b/, // variable declarations
+        /\breturn\b/, // return statements
+        /\bif\s*\(/, // if statements
+        /\bfor\s*\(/, // for loops
+        /\bwhile\s*\(/, // while loops
+        /\bclass\s+\w+/, // class declarations
+        /\bimport\b|\bexport\b/, // ES6 modules
+        /\}\s*else/, // else blocks
+        /\.\w+\s*\(/, // method calls
+    ];
+
+    return jsPatterns.some(pattern => pattern.test(text));
 }

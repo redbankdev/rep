@@ -4,10 +4,12 @@ import {
     prettyPrintJSON,
     prettyPrintXML,
     prettyPrintURLEncoded,
+    prettyPrintJavaScript,
     extractHTTPBody,
     prettyPrintBody,
     prettyPrintHTTP,
-    isMinified
+    isMinified,
+    hasJavaScriptPatterns
 } from '../js/core/utils/pretty-print.js';
 
 describe('prettyPrintJSON', () => {
@@ -174,5 +176,51 @@ describe('isMinified', () => {
 
     it('should handle empty string', () => {
         expect(isMinified('')).toBe(false);
+    });
+});
+
+describe('hasJavaScriptPatterns', () => {
+    it('should detect function declarations', () => {
+        expect(hasJavaScriptPatterns('function test() {}')).toBe(true);
+    });
+
+    it('should detect arrow functions', () => {
+        expect(hasJavaScriptPatterns('const fn = () => {}')).toBe(true);
+    });
+
+    it('should detect variable declarations', () => {
+        expect(hasJavaScriptPatterns('const x = 5;')).toBe(true);
+        expect(hasJavaScriptPatterns('let y = 10;')).toBe(true);
+        expect(hasJavaScriptPatterns('var z = 15;')).toBe(true);
+    });
+
+    it('should detect return statements', () => {
+        expect(hasJavaScriptPatterns('return x;')).toBe(true);
+    });
+
+    it('should return false for non-JavaScript', () => {
+        expect(hasJavaScriptPatterns('{"key": "value"}')).toBe(false);
+    });
+});
+
+describe('prettyPrintJavaScript', () => {
+    it('should format minified JavaScript', () => {
+        const minified = 'function test(){var x=5;if(x>0){console.log("yes");}return x;}';
+        const result = prettyPrintJavaScript(minified);
+        expect(result).toContain('\n');
+        expect(result).toContain('function');
+        expect(result).toContain('console.log');
+    });
+
+    it('should add indentation to braces', () => {
+        const minified = 'if(true){console.log("test");}';
+        const result = prettyPrintJavaScript(minified);
+        expect(result).toContain('if');
+        expect(result).toContain('console.log');
+    });
+
+    it('should handle empty or null input', () => {
+        expect(prettyPrintJavaScript('')).toBe('');
+        expect(prettyPrintJavaScript(null)).toBe('');
     });
 });
