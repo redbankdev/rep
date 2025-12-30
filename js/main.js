@@ -21,6 +21,7 @@ import { setupAIFeatures } from './features/ai/index.js';
 import { setupLLMChat } from './features/llm-chat/index.js';
 import { handleSendRequest } from './network/handler.js';
 import { initSearch } from './search/index.js';
+import { setupPrettyPrint } from './features/pretty-print/index.js';
 
 // UI Modules
 import { setupBlockControls } from './ui/block-controls.js';
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAIFeatures(elements);
     setupLLMChat(elements);
     initSearch();
+    setupPrettyPrint(elements);
 
     // Promotional Banner
     if (elements.promoBanner && elements.closeBannerBtn) {
